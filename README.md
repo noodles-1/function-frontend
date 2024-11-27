@@ -4,7 +4,7 @@ This Solidity program demonstrates the implementation of a smart contract on a f
 
 ## Description
 
-The program features the exchange of USD to Ethereum and vice versa. The `depositFromUsd()` function accepts an amount as parameter and deposits it to the account's current Ethereum balance. The `withdrawToUsd()` function accepts an amount as input and withdraws from the account's Ethereum balance to USD.
+The program features the exchange of USD to Ethereum and vice versa. The `getBalance()` function returns the current Ethereum balance of the account. The `getBooks()` functions retuns an array of the books existing in the storage. The `deposit()` function allows the user to deposit Ethereum on the account. The `addBook()` function allows the user to regsiter or add a new book to the storage. The `purchaseBook()` function lets the user to purchase a book.
 
 ## Getting Started
 
@@ -21,61 +21,68 @@ pragma solidity ^0.8.9;
 //import "hardhat/console.sol";
 
 contract Assessment {
-    address payable public owner;
-    uint256 public balance;
+  address payable public owner;
+  uint256 public balance;
 
-    event Deposit(uint256 amount);
-    event Withdraw(uint256 amount);
+  struct Book {
+    string title;
+    uint256 price;
+  }
 
-    constructor(uint initBalance) payable {
-        owner = payable(msg.sender);
-        balance = initBalance;
+  mapping(uint256 => Book) public books;
+  uint256 public bookCount;
+
+  event Deposit(uint256 amount);
+  event BookAdded(uint256 indexed id, string title, uint256 price);
+  event BookPurchased(uint256 indexed id, string title);
+
+  constructor(uint initBalance) payable {
+    owner = payable(msg.sender);
+    balance = initBalance;
+  }
+
+  modifier onlyOwner() {
+    require(msg.sender == owner, "You are not the owner of this account");
+    _;
+  }
+
+  function getBalance() public view returns(uint256) {
+    return balance;
+  }
+
+  function getBooks() public view returns(Book[] memory) {
+    Book[] memory allBooks = new Book[](bookCount);
+    for (uint256 i = 0; i < bookCount; i++) {
+      Book storage book = books[i];
+      allBooks[i] = Book({title: book.title, price: book.price});
     }
+    return allBooks;
+  }
 
-    function getBalance() public view returns(uint256){
-        return balance;
-    }
+  // deposit Ethereum to the account balance
+  function deposit(uint256 _eth) public payable onlyOwner {
+    uint _previousBalance = balance;
+    balance += _eth;
+    assert(balance == _previousBalance + _eth);
+    emit Deposit(_eth);
+  }
 
-    function depositFromUsd(uint256 _amount) public payable {
-        uint _previousBalance = balance;
+  // add new book to the store
+  function addBook(string memory _title, uint256 _price) public onlyOwner {
+    require(_price > 0, "Price must be a positive number");
+    books[bookCount] = Book({title: _title, price: _price});
+    emit BookAdded(bookCount, _title, _price);
+    bookCount++;
+  }
 
-        // make sure this is the owner
-        require(msg.sender == owner, "You are not the owner of this account");
-
-        // perform transaction
-        balance += _amount;
-
-        // assert transaction completed successfully
-        assert(balance == _previousBalance + _amount);
-
-        // emit the event
-        emit Deposit(_amount);
-    }
-
-    // custom error
-    error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
-
-    function withdrawToUsd(uint256 _withdrawAmount) public {
-        require(msg.sender == owner, "You are not the owner of this account");
-        uint _previousBalance = balance;
-        if (balance < _withdrawAmount) {
-            revert InsufficientBalance({
-                balance: balance,
-                withdrawAmount: _withdrawAmount
-            });
-        }
-
-        // withdraw the given amount
-        balance -= _withdrawAmount;
-
-        // assert the balance is correct
-        assert(balance == (_previousBalance - _withdrawAmount));
-
-        // emit the event
-        emit Withdraw(_withdrawAmount);
-    }
+  // purchase a book from the store
+  function purchaseBook(uint256 _id) public payable {
+    require(_id < bookCount, "Book ID does not exist");
+    Book storage book = books[_id];
+    balance -= book.price;
+    emit BookPurchased(_id, book.title);
+  }
 }
-
 ```
 
 To compile the code, click on the "Solidity Compiler" tab in the left-hand sidebar. Make sure the "Compiler" option is set to "0.8.7" or newer, and then click on the "Compile CreateToken.sol" button.

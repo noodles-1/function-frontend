@@ -8,30 +8,22 @@ export default function HomePage() {
   const [atm, setATM] = useState(undefined);
   const [balance, setBalance] = useState(undefined);
 
-  const [usd, setUsd] = useState(0);
   const [eth, setEth] = useState(0);
-  const [feedback, setFeedback] = useState(null)
+  const [feedback, setFeedback] = useState(null);
+  const [books, setBooks] = useState(null);
+  const [title, setTitle] = useState('');
+  const [price, setPrice] = useState(0);
+  const [bookId, setBookId] = useState(0);
   
   const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const atmABI = atm_abi.abi;
 
-  const handleUsd = async () => {
-    if (usd <= 0)
-      setFeedback('USD should be a positive number.')
-    else {
-      await deposit()
-      setFeedback(`$${usd} USD successfully exchanged to ${Math.ceil(usd * 0.00029)} ETH.`)
-    }
-  }
-
-  const handleEth = async () => {
+  const handleDeposit = async () => {
     if (eth <= 0)
       setFeedback('ETH should be a positive number.')
-    else if (balance < eth)
-      setFeedback('Current ETH balance is not sufficient for this transaction.')
     else {
-      await withdraw()
-      setFeedback(`You withdrew $${eth * 3487.63} USD worth of ETH.`)
+      await deposit()
+      setFeedback(`You deposited ${eth} ETH to your account.`)
     }
   }
   
@@ -85,50 +77,99 @@ export default function HomePage() {
 
   const deposit = async () => {
     if (atm) {
-      let tx = await atm.depositFromUsd(Math.ceil(usd * 0.00029));
+      let tx = await atm.deposit(eth);
       await tx.wait()
       getBalance();
     }
   }
 
-  const withdraw = async () => {
+  const loadBooks = async () => {
     if (atm) {
-      let tx = await atm.withdrawToUsd(eth);
-      await tx.wait()
-      getBalance();
+      setBooks((await atm.getBooks()));
+    }
+  }
+
+  const handleAddBook = async () => {
+    await addBook();
+    setFeedback('Book has been added.');
+    setTitle('');
+    setPrice(0);
+  }
+
+  const addBook = async () => {
+    if (atm) {
+      let tx = await atm.addBook(title, price);
+      await tx.wait();
+      loadBooks();
+    }
+  }
+
+  const handlePurchase = async () => {
+    if (bookId < 0 || bookId >= books.length)
+      setFeedback('Book ID is invalid.')
+    else if (books[bookId].price.toNumber() > balance)
+      setFeedback('Your ETH balance is not enough for this transaction.')
+    else {
+      if (atm) {
+        let tx = await atm.purchaseBook(bookId);
+        await tx.wait();
+        getBalance();
+      }
+      setFeedback(`${books[bookId].title} has been purchased for ${books[bookId].price.toNumber()} ETH.`);
+      setBookId(0);
     }
   }
 
   const initUser = () => {
     // Check to see if user has Metamask
-    if (!ethWallet) {
+    if (!ethWallet)
       return <p>Please install Metamask in order to use this ATM.</p>
-    }
 
     // Check to see if user is connected. If not, connect to their account
-    if (!account) {
+    if (!account)
       return <button onClick={connectAccount}>Please connect your Metamask wallet</button>
-    }
 
-    if (balance == undefined) {
+    if (balance == undefined)
       getBalance();
-    }
+
+    if (books == null)
+      loadBooks();
 
     return (
       <div>
         <p>Your account: {account}</p>
         <p>Your ETH balance: <strong> {balance} ETH </strong></p>
         <div>
-          <h3> Exchange USD to Ethereum ($1 USD = 0.00029 ETH) </h3>
-          <input type="number" value={usd} onChange={n => setUsd(n.target.value)} placeholder="USD" />
-          <button onClick={handleUsd}>Deposit to ETH</button>
+          <h3> Deposit ETH to your account </h3>
+          <input type="number" value={eth} onChange={n => setEth(n.target.value)} placeholder="ETH" />
+          <button onClick={handleDeposit}>Deposit</button>
+        </div>
+        <div>
+          <h3> Current books available </h3>
+          {books && books.map((book, ind) => 
+            <div id={ind}>
+              <span> <strong> #{ind} </strong> </span>
+              <span> {book.title} </span>
+              <span> - {book.price.toNumber()} ETH </span>
+            </div>
+          )}
+        </div>
+        <div>
+          <h3> Add a book to the store </h3>
+          <p> Title </p>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title of the book" />
+          <p> Price </p>
+          <input type="number" value={price} onChange={n => setPrice(n.target.value)} />
+          <br />
+          <button onClick={handleAddBook}> Add book </button>
+        </div>
+        <div>
+          <h3> Purchase a book </h3>
+          <p> Book ID </p>
+          <input type="number" value={bookId} onChange={n => setBookId(n.target.value)} />
+          <button onClick={handlePurchase}> Purchase </button>
         </div>
         <br />
-        <div>
-          <h3> Exchange Ethereum to USD (1 ETH = $3487.63 USD) </h3>
-          <input type="number" value={eth} onChange={n => setEth(n.target.value)} placeholder="ETH" />
-          <button onClick={handleEth}>Withdraw to USD</button>
-        </div>
         {feedback && <h4> {feedback} </h4>}
       </div>
     )
@@ -138,8 +179,8 @@ export default function HomePage() {
 
   return (
     <main className="container">
-      <header><h1>USD to Ethereum Exchange</h1></header>
-      <h3> Exchange your USD to Ethereum, and vice versa! </h3>
+      <header><h1>Online Book Store</h1></header>
+      <h3> Purchase books through Ethereum! </h3>
       {initUser()}
       <style jsx>{`
         .container {
