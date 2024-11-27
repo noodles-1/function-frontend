@@ -4,7 +4,7 @@ This Solidity program demonstrates the implementation of a smart contract on a f
 
 ## Description
 
-The program features the exchange of USD to Ethereum and vice versa. The `getBalance()` function returns the current Ethereum balance of the account. The `getBooks()` functions retuns an array of the books existing in the storage. The `deposit()` function allows the user to deposit Ethereum on the account. The `addBook()` function allows the user to regsiter or add a new book to the storage. The `purchaseBook()` function lets the user to purchase a book.
+The program features adding and purchasing of books from an online store through ETH. The `getBalance()` function returns the current Ethereum balance of the account. The `getBooks()` functions retuns an array of the books existing in the storage. The `deposit()` function allows the user to deposit Ethereum on the account. The `addBook()` function allows the user to regsiter or add a new book to the storage. The `purchaseBook()` function lets the user to purchase a book.
 
 ## Getting Started
 
